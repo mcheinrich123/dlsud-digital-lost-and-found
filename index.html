@@ -82,12 +82,13 @@
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const formData = new FormData();
-        formData.append('image', fileInput.files[0]);
-        formData.append('description', document.getElementById('description').value);
+       const formData = new FormData();
+       formData.append('image', fileInput.files[0]); 
+       formData.append('description', document.getElementById('description').value);
 
         try {
-            const response = await fetch('http://127.0.0', {
+            const response = await fetch('http://127.0.0.1:5000/api/items', {
+
                 method: 'POST',
                 body: formData
             });
