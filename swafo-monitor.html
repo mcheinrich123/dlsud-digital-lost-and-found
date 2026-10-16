@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWAFO Control Center - Real-Time Claims</title>
+    <!-- Load Socket.io to keep an open, persistent live stream link with your Flask backend -->
+    <script src="https://socket.io"></script>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #2c3e50; color: #ecf0f1; margin: 0; padding: 40px; }
+        .dashboard { max-width: 900px; margin: 0 auto; background: #34495e; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+        h1 { margin-top: 0; color: #e74c3c; border-bottom: 2px solid #4f5d73; padding-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .status-badge { font-size: 14px; background: #2ecc71; color: white; padding: 5px 12px; border-radius: 20px; font-weight: normal; }
+        .alert-list { display: flex; flex-direction: column; gap: 15px; margin-top: 25px; }
+        .alert-card { background: #1a252f; border-left: 6px solid #e74c3c; padding: 20px; border-radius: 6px; animation: slideIn 0.3s ease-out; position: relative; }
+        .alert-time { font-size: 12px; color: #7f8c8d; margin-bottom: 5px; }
+        .alert-msg { font-size: 16px; margin: 0; color: #fff; }
+        .clear-btn { position: absolute; right: 20px; top: 22px; background: #7f8c8d; border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+        .clear-btn:hover { background: #95a5a6; }
+        .no-alerts { text-align: center; color: #7f8c8d; padding: 40px 0; font-style: italic; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <h1>SWAFO Claim Stream Monitor 🚨 <span class="status-badge" id="connStatus">Connecting...</span></h1>
+    
+    <div class="alert-list" id="alertList">
+        <div class="no-alerts" id="noAlertsMsg">Listening for incoming item inquiries from the gallery...</div>
+    </div>
+</div>
+
+<script>
+    const BACKEND_URL = 'http://127.0.0.1:5000';
+    const socket = io(BACKEND_URL);
+    const alertList = document.getElementById('alertList');
+    const noAlertsMsg = document.getElementById('noAlertsMsg');
+    const connStatus = document.getElementById('connStatus');
+
+    // Live Connection Visual Status Indicators
+    socket.on('connect', () => {
+        connStatus.innerText = "Live Connected";
+        connStatus.style.background = "#2ecc71";
+    });
+
+    socket.on('disconnect', () => {
+        connStatus.innerText = "Disconnected";
+        connStatus.style.background = "#e74c3c";
+    });
+
+    // ⚡ LISTEN FOR REAL-TIME BROADCASTS FROM THE BACKEND
+    socket.on('swafo_notification', (data) => {
+        // Hide placeholder message on first incoming alert
+        if (noAlertsMsg) noAlertsMsg.style.display = 'none';
+
+        // Get current system timestamp
+        const now = new Date();
+        const timestamp = now.toLocaleTimeString();
+
+        // Dynamically build a sleek stream card notification box
+        const card = document.createElement('div');
+        card.className = 'alert-card';
+        card.innerHTML = `
+            <div class="alert-time">[${timestamp}]</div>
+            <p class="alert-msg">${data.message}</p>
+            <button class="clear-btn" onclick="this.parentElement.remove(); checkEmpty();">Dismiss</button>
+        `;
+
+        // Always push the newest real-time claim alert directly to the top of the monitor stack
+        alertList.insertBefore(card, alertList.firstChild);
+        
+        // Optional: Play a short audible notification ping for the staff
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 note
+            osc.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+        } catch (e) { console.log("Audio alert blocked by browser permissions until user interacts."); }
+    });
+
+    function checkEmpty() {
+        if (alertList.children.length === 0 || (alertList.children.length === 1 && alertList.children[0].id === 'noAlertsMsg')) {
+            noAlertsMsg.style.display = 'block';
+        }
+    }
+</script>
+</body>
+</html>
